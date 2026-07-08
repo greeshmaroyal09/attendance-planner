@@ -1,26 +1,29 @@
 import { calculateAttendance } from '../utils/attendance';
-import { getDayName, isWorkingDay } from '../utils/calendar';
+import { getDateRange, getDayName, isWorkingDay } from '../utils/calendar';
 
-function getDateRangeFrom(selectedDate, calendar) {
-  const dates = [];
-  const start = new Date(`${selectedDate}T00:00:00Z`);
-  const end = new Date(`${calendar.lastWorkingDay}T00:00:00Z`);
-  const current = new Date(start);
-
-  while (current <= end) {
-    const isoDate = current.toISOString().split('T')[0];
-    dates.push(isoDate);
-    current.setDate(current.getDate() + 1);
+export function clearAttendanceForDate(attendanceRecords = {}, date) {
+  if (!date) {
+    return attendanceRecords;
   }
 
-  return dates;
+  const nextRecords = { ...(attendanceRecords || {}) };
+  delete nextRecords[date];
+  return nextRecords;
+}
+
+function countFutureOccurrences(subjectName, selectedDate, timetable = {}, calendar = null) {
+  const calendarData = calendar || { lastWorkingDay: new Date().toISOString().split('T')[0] };
+  return getDateRange(selectedDate, calendarData.lastWorkingDay)
+    .filter((date) => date > selectedDate)
+    .filter((date) => isWorkingDay(date, calendarData))
+    .reduce((count, date) => {
+      const dayName = getDayName(date);
+      const dayTimetable = timetable?.[dayName] || [];
+      return count + dayTimetable.filter((entry) => entry === subjectName).length;
+    }, 0);
 }
 
 export function buildSubjectSummary(subjects, attendanceRecords, selectedDate = new Date().toISOString().split('T')[0], timetable = {}, calendar = null) {
-  const calendarData = calendar || { lastWorkingDay: new Date().toISOString().split('T')[0] };
-  const futureDates = getDateRangeFrom(selectedDate, calendarData)
-    .filter((date) => date > selectedDate)
-    .filter((date) => isWorkingDay(date, calendarData));
 
   const summary = (subjects || []).map((subject) => {
     let attended = 0;
@@ -35,11 +38,7 @@ export function buildSubjectSummary(subjects, attendanceRecords, selectedDate = 
       }
     });
 
-    const futureOccurrences = futureDates.reduce((count, date) => {
-      const dayName = getDayName(date);
-      const dayTimetable = timetable?.[dayName] || [];
-      return count + dayTimetable.filter((subjectName) => subjectName === subject.name).length;
-    }, 0);
+    const futureOccurrences = countFutureOccurrences(subject.name, selectedDate, timetable, calendar);
 
     return {
       id: subject.id,

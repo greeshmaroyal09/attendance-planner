@@ -1,7 +1,7 @@
 import React from 'react';
 import { buildPeriodSlots } from '../utils/timetable';
 
-export default function TodayPage({ selectedDate, classes, attendance, onMarkAll, onMarkOne, onSave }) {
+export default function TodayPage({ selectedDate, classes, attendance, onMarkAll, onMarkOne, onSave, onClear }) {
   const slots = buildPeriodSlots(classes);
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 sm:p-4">
@@ -31,7 +31,10 @@ export default function TodayPage({ selectedDate, classes, attendance, onMarkAll
           </div>
         )) : <p className="text-sm text-slate-400">No classes scheduled for this day.</p>}
       </div>
-      <button onClick={onSave} className="mt-4 w-full rounded-lg bg-cyan-600 px-3 py-3 text-sm font-medium sm:w-auto">Save Attendance</button>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <button onClick={onSave} className="w-full rounded-lg bg-cyan-600 px-3 py-3 text-sm font-medium sm:w-auto">Save Attendance</button>
+        <button onClick={onClear} className="w-full rounded-lg border border-rose-500/40 px-3 py-3 text-sm font-medium text-rose-300 sm:w-auto">Clear Attendance</button>
+      </div>
     </div>
   );
 }

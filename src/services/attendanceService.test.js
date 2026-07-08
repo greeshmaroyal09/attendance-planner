@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSubjectSummary } from './attendanceService';
+import { buildSubjectSummary, clearAttendanceForDate } from './attendanceService';
 import { academicCalendar } from '../data/academicCalendar';
 import { getDayName, isWorkingDay } from '../utils/calendar';
 
@@ -51,5 +51,37 @@ describe('buildSubjectSummary', () => {
     expect(os.remaining).toBe(expectedOccurrences('OS'));
     expect(dl.remaining).toBe(expectedOccurrences('DL'));
     expect(cn.remaining).toBe(expectedOccurrences('CN'));
+  });
+
+  it('removes a saved attendance entry for a selected date', () => {
+    const attendanceRecords = {
+      '2026-07-06': { OS: 'present' },
+      '2026-07-07': { DL: 'absent' },
+    };
+
+    const nextRecords = clearAttendanceForDate(attendanceRecords, '2026-07-06');
+
+    expect(nextRecords['2026-07-06']).toBeUndefined();
+    expect(nextRecords['2026-07-07']).toEqual({ DL: 'absent' });
+  });
+
+  it('does not count holidays or exam days toward remaining classes', () => {
+    const calendar = {
+      ...academicCalendar,
+      holidays: ['2026-07-08'],
+      midExams: ['2026-07-09'],
+      endExams: [],
+      lastWorkingDay: '2026-07-10',
+    };
+
+    const summary = buildSubjectSummary(
+      [{ id: '1', name: 'OS' }],
+      {},
+      '2026-07-07',
+      { Wednesday: ['OS'], Thursday: ['OS'], Friday: ['OS'] },
+      calendar,
+    );
+
+    expect(summary[0].remaining).toBe(1);
   });
 });

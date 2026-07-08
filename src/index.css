@@ -24,4 +24,15 @@ button,
 input,
 select {
   min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  min-height: 100vh;
 }

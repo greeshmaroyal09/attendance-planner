@@ -4,7 +4,7 @@ import TimetableBuilder from '../components/TimetableBuilder';
 import TodayPage from '../components/TodayPage';
 import BunkPredictor from '../components/BunkPredictor';
 import CalendarView from '../components/CalendarView';
-import { buildSubjectSummary, getOverallAttendance } from '../services/attendanceService';
+import { buildSubjectSummary, clearAttendanceForDate, getOverallAttendance } from '../services/attendanceService';
 import { academicCalendar } from '../data/academicCalendar';
 import { getDayName } from '../utils/calendar';
 import { formatPercent } from '../utils/attendance';
@@ -53,6 +53,16 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
     setSelectedDate(date);
   };
 
+  const clearAttendance = () => {
+    if (!window.confirm('Clear the saved attendance for this date?')) {
+      return;
+    }
+
+    const nextAttendance = clearAttendanceForDate(data.attendance || {}, selectedDate);
+    setDraftAttendance({});
+    onSave({ ...data, attendance: nextAttendance });
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <section className="grid gap-3 sm:gap-4 md:grid-cols-3">
@@ -73,7 +83,7 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
       <section className="grid gap-4 sm:gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4 sm:space-y-6">
           <div ref={attendanceSectionRef}>
-            <TodayPage selectedDate={selectedDate} classes={selectedDayClasses} attendance={draftAttendance} onMarkAll={markAll} onMarkOne={markOne} onSave={saveAttendance} />
+            <TodayPage selectedDate={selectedDate} classes={selectedDayClasses} attendance={draftAttendance} onMarkAll={markAll} onMarkOne={markOne} onSave={saveAttendance} onClear={clearAttendance} />
           </div>
           <TimetableBuilder timetable={data.timetable} subjects={data.subjects} onChange={(nextTimetable) => onSave({ ...data, timetable: nextTimetable })} />
         </div>

@@ -38,6 +38,7 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
             >
               <div className="font-medium">{date}</div>
               <div className="text-xs opacity-80">{working ? 'Working Day' : 'Off'}</div>
+              {hasAttendanceRecord && <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300">Saved</div>}
             </button>
           );
         })}
