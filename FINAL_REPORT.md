@@ -2,53 +2,34 @@
 
 ## Completed work
 
-### 1. Attendance integrity
-- Added attendance normalization so only currently valid subject entries are persisted.
-- Removed stale attendance data that no longer matches the active timetable or subject list.
-- Ensured summary calculations use normalized records so orphaned or stale entries do not affect statistics.
-- Added regression tests covering normalization and custom holiday behavior.
+### 1. Attendance and calendar integration
+- Clicking a calendar date now opens the attendance editor for that date directly.
+- The calendar and attendance entry flow now share the same date rules.
+- Saved attendance dates remain highlighted in the calendar.
 
-### 2. Attendance management
-- Kept the save flow but made it persist only valid attendance values.
-- Added a clear-attendance action for the active date.
-- Added a delete-for-date action for removing saved attendance entries.
+### 2. Date override system
+- Added date-level overrides for working day, holiday, no-class day, and half-day modes.
+- Overrides can be applied to any date, including weekends, predefined holidays, and exam days.
+- Overrides affect attendance calculations, remaining classes, safe-bunk logic, analytics, and leave prediction.
 
-### 3. Calendar improvements
-- Highlighted saved attendance dates.
-- Highlighted exam days.
-- Highlighted holidays and custom holiday overrides.
-- Highlighted the current day.
-- Added working-day count visibility.
-- Custom holidays now participate in working-day evaluation.
+### 3. Saturday and special working day support
+- Added support for assigning a different timetable source to a specific date.
+- Custom timetable values can be supplied per date for special cases like Saturday scheduling.
+- These rules affect attendance, attendance analytics, bunk planning, leave prediction, and remaining class calculations.
 
-### 4. Mobile UX
-- Added a compact bottom navigation for mobile screens.
-- Added a More menu with the requested sections.
-- Kept the existing desktop experience intact while making the app more accessible on small screens.
+### 4. No-class day support
+- Added a no-class date mode that removes classes from calculations and suppresses attendance entry requirements.
 
-### 5. Analytics improvements
-- Expanded the bunk predictor card to show:
-  - attendance percentage
-  - present count
-  - absent count
-  - remaining classes
-  - safe bunks
-  - danger/safe status
+### 5. Half-day support
+- Added support for half-day behavior with per-period disabling.
+- Disabled periods are excluded from attendance calculations for that date.
 
-### 6. Settings improvements
-- Added a settings panel with attendance threshold control.
-- Kept export, import, and reset actions wired into the same flow.
-- Added compatibility handling for older storage data and legacy threshold values.
+### 6. Leave predictor upgrade
+- The leave planner now accepts a date range and calculates per-subject impact, overall attendance impact, safe/danger status, and missed classes using the shared timetable and date rules.
 
-### 7. PWA readiness
-- Integrated vite-plugin-pwa.
-- Added manifest and installable metadata.
-- Registered a PWA service worker for caching and offline support after first load.
-- Added an install button for supported browsers.
-
-## Validation evidence
-- Tests: `npm test` → 3 test files, 7 tests passed
-- Production build: `npm run build` → successful Vite build with generated PWA assets
+## Verification
+- Tests: npm test -- --run → 3 test files, 8 tests passed
+- Production build: npm run build → successful Vite build with generated PWA assets
 
 ## Files changed
 - [src/services/attendanceService.js](src/services/attendanceService.js)
@@ -57,17 +38,6 @@
 - [src/pages/PlannerPage.jsx](src/pages/PlannerPage.jsx)
 - [src/components/TodayPage.jsx](src/components/TodayPage.jsx)
 - [src/components/CalendarView.jsx](src/components/CalendarView.jsx)
-- [src/components/BunkPredictor.jsx](src/components/BunkPredictor.jsx)
-- [src/components/SettingsPanel.jsx](src/components/SettingsPanel.jsx)
-- [src/components/MobileNav.jsx](src/components/MobileNav.jsx)
+- [src/components/LeavePlanner.jsx](src/components/LeavePlanner.jsx)
 - [src/App.jsx](src/App.jsx)
-- [src/main.jsx](src/main.jsx)
-- [src/hooks/usePwaInstall.js](src/hooks/usePwaInstall.js)
-- [src/utils/pwa.js](src/utils/pwa.js)
-- [src/utils/storageMigration.js](src/utils/storageMigration.js)
-- [vite.config.js](vite.config.js)
-- [package.json](package.json)
-- [index.html](index.html)
-- [public/sw.js](public/sw.js)
 - [src/services/attendanceService.test.js](src/services/attendanceService.test.js)
-- [src/utils/calendar.test.js](src/utils/calendar.test.js)

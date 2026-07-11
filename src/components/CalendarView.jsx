@@ -1,9 +1,10 @@
 import React from 'react';
 import { academicCalendar } from '../data/academicCalendar';
-import { getCalendarStats, getDateRange, isWorkingDay } from '../utils/calendar';
+import { getCalendarStats, getDateRange, getDateSchedule, isWorkingDay } from '../utils/calendar';
 
-export default function CalendarView({ selectedDate, onSelectDate, attendanceRecords }) {
-  const stats = getCalendarStats();
+export default function CalendarView({ selectedDate, onSelectDate, attendanceRecords, dateRules = {} }) {
+  const calendar = { ...academicCalendar, dateRules };
+  const stats = getCalendarStats(calendar);
   const dates = getDateRange(academicCalendar.startDate, academicCalendar.lastWorkingDay);
   const today = new Date().toISOString().split('T')[0];
 
@@ -24,7 +25,8 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
       </div>
       <div className="grid gap-2 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
         {dates.map((date) => {
-          const working = isWorkingDay(date);
+          const schedule = getDateSchedule(date, {}, calendar);
+          const working = isWorkingDay(date, calendar);
           const hasAttendanceRecord = Boolean(attendanceRecords?.[date] && Object.keys(attendanceRecords[date]).length);
           const isExamDay = academicCalendar.midExams.includes(date) || academicCalendar.endExams.includes(date);
           const isHoliday = academicCalendar.holidays.includes(date) || academicCalendar.poojaHolidays.includes(date) || academicCalendar.deepavaliHolidays.includes(date) || academicCalendar.customHolidays?.includes(date);
@@ -32,6 +34,8 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
           if (date === selectedDate) badge = 'border-cyan-500 bg-cyan-500/20 text-cyan-300';
           else if (date === today) badge = 'border-cyan-400 bg-cyan-500/20 text-cyan-300';
           else if (hasAttendanceRecord) badge = 'border-emerald-500/60 bg-emerald-500/20 text-emerald-300';
+          else if (schedule.status === 'no-class') badge = 'border-violet-500/60 bg-violet-500/20 text-violet-200';
+          else if (schedule.status === 'half-day') badge = 'border-amber-500/60 bg-amber-500/20 text-amber-200';
           else if (isExamDay) badge = 'border-amber-500/60 bg-amber-500/20 text-amber-300';
           else if (isHoliday) badge = 'bg-rose-500/20 text-rose-300';
           else if (working) badge = 'bg-emerald-500/20 text-emerald-300';
@@ -43,9 +47,11 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
               className={`rounded-2xl border border-slate-800 p-2 text-left text-xs shadow-sm shadow-slate-950/20 sm:text-sm ${badge}`}
             >
               <div className="font-medium">{date}</div>
-              <div className="text-xs opacity-80">{working ? 'Working Day' : 'Off'}</div>
+              <div className="text-xs opacity-80">{schedule.status === 'no-class' ? 'No Class' : schedule.status === 'half-day' ? 'Half Day' : working ? 'Working Day' : 'Off'}</div>
               {hasAttendanceRecord && <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300">Saved</div>}
               {isExamDay && <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300">Exam</div>}
+              {schedule.status === 'no-class' && <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-300">No Class</div>}
+              {schedule.status === 'half-day' && <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-300">Half Day</div>}
               {isHoliday && !isExamDay && <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-rose-300">Holiday</div>}
             </button>
           );

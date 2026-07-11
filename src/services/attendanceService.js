@@ -1,12 +1,13 @@
 import { calculateAttendance } from '../utils/attendance';
-import { getDateRange, getDayName, isWorkingDay } from '../utils/calendar';
+import { getDateRange, getDateSchedule, isWorkingDay } from '../utils/calendar';
 
 function getValidSubjectNames(subjects = []) {
   return new Set((subjects || []).map((subject) => subject?.name).filter(Boolean));
 }
 
-function getDayTimetable(dayName, timetable = {}) {
-  return Array.isArray(timetable?.[dayName]) ? timetable[dayName] : [];
+function getDayTimetable(date, timetable = {}, calendar = null) {
+  const schedule = getDateSchedule(date, timetable, calendar);
+  return schedule.timetable || [];
 }
 
 export function normalizeAttendanceRecords(attendanceRecords = {}, subjects = [], timetable = {}, calendar = null) {
@@ -18,8 +19,7 @@ export function normalizeAttendanceRecords(attendanceRecords = {}, subjects = []
       return;
     }
 
-    const dayName = getDayName(date);
-    const activeSubjects = new Set(getDayTimetable(dayName, timetable).filter((entry) => validSubjects.has(entry)));
+    const activeSubjects = new Set(getDayTimetable(date, timetable, calendar).filter((entry) => validSubjects.has(entry)));
     const normalizedRecord = Object.entries(record).reduce((acc, [subjectName, status]) => {
       if (!subjectName || !validSubjects.has(subjectName)) {
         return acc;
@@ -60,8 +60,7 @@ function countFutureOccurrences(subjectName, selectedDate, timetable = {}, calen
     .filter((date) => date > selectedDate)
     .filter((date) => isWorkingDay(date, calendarData))
     .reduce((count, date) => {
-      const dayName = getDayName(date);
-      const dayTimetable = timetable?.[dayName] || [];
+      const dayTimetable = getDateSchedule(date, timetable, calendarData).timetable || [];
       return count + dayTimetable.filter((entry) => entry === subjectName).length;
     }, 0);
 }
@@ -95,6 +94,60 @@ export function buildSubjectSummary(subjects, attendanceRecords, selectedDate = 
   });
 
   return summary;
+}
+
+export function buildLeavePrediction(subjects, attendanceRecords, startDate, endDate, timetable = {}, calendar = null, threshold = 75) {
+  const today = new Date().toISOString().split('T')[0];
+
+  return (subjects || []).map((subject) => {
+    let currentPresent = 0;
+    let currentConducted = 0;
+
+    Object.entries(attendanceRecords || {}).forEach(([date, record]) => {
+      if (!date || !record || typeof record !== 'object' || Array.isArray(record)) {
+        return;
+      }
+
+      if (date > today || (startDate && date >= startDate)) {
+        return;
+      }
+
+      if (record?.[subject.name] === 'present') {
+        currentPresent += 1;
+        currentConducted += 1;
+      } else if (record?.[subject.name] === 'absent') {
+        currentConducted += 1;
+      }
+    });
+
+    let futureMissed = 0;
+    if (startDate && endDate && startDate <= endDate) {
+      futureMissed = getDateRange(startDate, endDate)
+        .filter((date) => isWorkingDay(date, calendar))
+        .reduce((count, date) => {
+          const dayTimetable = getDateSchedule(date, timetable, calendar).timetable || [];
+          return count + dayTimetable.filter((entry) => entry === subject.name).length;
+        }, 0);
+    }
+
+    const predictedConducted = currentConducted + futureMissed;
+    const predictedPresent = currentPresent;
+    const predictedPercentage = calculateAttendance(predictedPresent, predictedConducted);
+    const status = predictedPercentage >= threshold ? 'Safe' : predictedPercentage >= threshold - 5 ? 'Warning' : 'Danger';
+
+    return {
+      id: subject.id,
+      name: subject.name,
+      currentConducted,
+      currentPresent,
+      currentPercentage: calculateAttendance(currentPresent, currentConducted),
+      futureMissed,
+      predictedConducted,
+      predictedPresent,
+      predictedPercentage,
+      status,
+    };
+  });
 }
 
 export function getOverallAttendance(summary) {

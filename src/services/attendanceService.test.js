@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSubjectSummary, clearAttendanceForDate, normalizeAttendanceRecords } from './attendanceService';
+import { buildLeavePrediction, buildSubjectSummary, clearAttendanceForDate, normalizeAttendanceRecords } from './attendanceService';
 import { academicCalendar } from '../data/academicCalendar';
 import { getDayName, isWorkingDay } from '../utils/calendar';
 
@@ -83,6 +83,78 @@ describe('buildSubjectSummary', () => {
     );
 
     expect(summary[0].remaining).toBe(1);
+  });
+
+  it('uses special working-day timetable rules and no-class rules when counting future classes', () => {
+    const calendar = {
+      ...academicCalendar,
+      lastWorkingDay: '2026-07-12',
+      dateRules: {
+        '2026-07-11': { status: 'working', specialWorkingDaySource: 'Monday' },
+        '2026-07-12': { status: 'no-class' },
+      },
+    };
+
+    const summary = buildSubjectSummary(
+      [{ id: '1', name: 'OS' }],
+      {},
+      '2026-07-09',
+      { Monday: ['OS'], Tuesday: [], Wednesday: [], Thursday: [], Friday: [] },
+      calendar,
+    );
+
+    expect(summary[0].remaining).toBe(1);
+  });
+
+  it('respects half-day period disablement when counting future classes', () => {
+    const calendar = {
+      ...academicCalendar,
+      lastWorkingDay: '2026-07-13',
+      dateRules: {
+        '2026-07-13': { status: 'half-day', disabledPeriods: ['P2'] },
+      },
+    };
+
+    const summary = buildSubjectSummary(
+      [{ id: '1', name: 'OS' }, { id: '2', name: 'Math' }],
+      {},
+      '2026-07-10',
+      { Monday: ['OS', 'Math'] },
+      calendar,
+    );
+
+    expect(summary[0].remaining).toBe(1);
+    expect(summary[1].remaining).toBe(0);
+  });
+
+  it('uses existing attendance as the baseline for leave predictions', () => {
+    const subjects = [{ id: '1', name: 'OS' }];
+    const attendanceRecords = {
+      '2026-07-06': { OS: 'present' },
+      '2026-07-07': { OS: 'absent' },
+      '2026-07-08': { OS: 'present' },
+    };
+
+    const rows = buildLeavePrediction(
+      subjects,
+      attendanceRecords,
+      '2026-07-09',
+      '2026-07-10',
+      { Monday: ['OS'], Tuesday: ['OS'], Thursday: ['OS'], Friday: ['OS'] },
+      academicCalendar,
+      75,
+    );
+
+    expect(rows[0]).toMatchObject({
+      currentConducted: 3,
+      currentPresent: 2,
+      currentPercentage: 66.67,
+      futureMissed: 2,
+      predictedConducted: 5,
+      predictedPresent: 2,
+      predictedPercentage: 40,
+      status: 'Danger',
+    });
   });
 
   it('removes attendance entries that no longer match the current timetable or subjects', () => {

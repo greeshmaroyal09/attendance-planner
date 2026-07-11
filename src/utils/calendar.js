@@ -9,6 +9,46 @@ function parseIsoDate(dateString) {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+function hasHoliday(calendar = academicCalendar, normalizedDate) {
+  return [
+    calendar.holidays,
+    calendar.poojaHolidays,
+    calendar.deepavaliHolidays,
+    calendar.customHolidays,
+    calendar.midExams,
+    calendar.endExams,
+  ].some((list) => list?.includes(normalizedDate));
+}
+
+function getDateRule(dateString, calendar = academicCalendar) {
+  const normalizedDate = toIsoDate(dateString);
+  return calendar?.dateRules?.[normalizedDate] || null;
+}
+
+function normalizeTimetableEntries(timetableEntries = []) {
+  return (timetableEntries || []).filter((entry) => entry !== null && entry !== undefined && entry !== '');
+}
+
+function getDefaultStatus(dateString, calendar = academicCalendar) {
+  const date = new Date(dateString);
+  const day = date.getDay();
+  const normalizedDate = toIsoDate(date);
+
+  if (day === 0 || day === 6) {
+    return 'weekend';
+  }
+
+  if (normalizedDate < calendar.startDate || normalizedDate > calendar.lastWorkingDay) {
+    return 'out-of-range';
+  }
+
+  if (hasHoliday(calendar, normalizedDate)) {
+    return 'holiday';
+  }
+
+  return 'working';
+}
+
 export function getDateRange(startDate, endDate) {
   const dates = [];
   const start = new Date(startDate);
@@ -21,19 +61,45 @@ export function getDateRange(startDate, endDate) {
   return dates;
 }
 
+export function getDateSchedule(dateString, timetable = {}, calendar = academicCalendar) {
+  const normalizedDate = toIsoDate(dateString);
+  const rule = getDateRule(normalizedDate, calendar);
+  const dayName = getDayName(normalizedDate);
+  const status = rule?.status || getDefaultStatus(normalizedDate, calendar);
+  const isHoliday = status === 'holiday';
+  const isNoClass = status === 'no-class';
+  const isHalfDay = status === 'half-day';
+  const isWorkingOverride = status === 'working' || status === 'half-day';
+  const baseDayName = rule?.specialWorkingDaySource || dayName;
+  const customTimetable = Array.isArray(rule?.customTimetable) ? rule.customTimetable : [];
+  const dayTimetable = customTimetable.length
+    ? customTimetable
+    : Array.isArray(timetable?.[baseDayName]) ? timetable[baseDayName] : [];
+  const disabledPeriods = Array.isArray(rule?.disabledPeriods) ? rule.disabledPeriods : [];
+  const activeTimetable = isHoliday || isNoClass
+    ? []
+    : normalizeTimetableEntries(dayTimetable).filter((_, index) => {
+        const period = `P${index + 1}`;
+        const periodNumber = index + 1;
+        return !disabledPeriods.includes(period) && !disabledPeriods.includes(periodNumber);
+      });
+
+  return {
+    date: normalizedDate,
+    status,
+    dayName,
+    baseDayName,
+    timetable: activeTimetable,
+    disabledPeriods,
+    isHoliday,
+    isNoClass,
+    isHalfDay,
+    isWorkingDay: isWorkingOverride || (status === 'working' && !isHoliday && !isNoClass),
+  };
+}
+
 export function isWorkingDay(dateString, calendar = academicCalendar) {
-  const date = new Date(dateString);
-  const day = date.getDay();
-  const normalizedDate = toIsoDate(date);
-  if (day === 0 || day === 6) return false;
-  if (normalizedDate < calendar.startDate || normalizedDate > calendar.lastWorkingDay) return false;
-  if (calendar.holidays?.includes(normalizedDate)) return false;
-  if (calendar.poojaHolidays?.includes(normalizedDate)) return false;
-  if (calendar.deepavaliHolidays?.includes(normalizedDate)) return false;
-  if (calendar.customHolidays?.includes(normalizedDate)) return false;
-  if (calendar.midExams?.includes(normalizedDate)) return false;
-  if (calendar.endExams?.includes(normalizedDate)) return false;
-  return true;
+  return getDateSchedule(dateString, {}, calendar).isWorkingDay;
 }
 
 export function getWorkingDays(calendar = academicCalendar) {

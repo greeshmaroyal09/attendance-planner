@@ -16,8 +16,11 @@ export function normalizeUserData(data) {
       Wednesday: [],
       Thursday: [],
       Friday: [],
+      Saturday: [],
+      Sunday: [],
     },
     attendance: {},
+    dateRules: {},
     settings: createDefaultSettings(),
   };
 
@@ -29,6 +32,7 @@ export function normalizeUserData(data) {
   nextData.subjects = Array.isArray(data.subjects) && data.subjects.length ? data.subjects : defaultData.subjects;
   nextData.timetable = data.timetable && typeof data.timetable === 'object' ? data.timetable : defaultData.timetable;
   nextData.attendance = data.attendance && typeof data.attendance === 'object' ? data.attendance : {};
+  nextData.dateRules = data.dateRules && typeof data.dateRules === 'object' ? data.dateRules : {};
   nextData.settings = {
     ...createDefaultSettings(),
     ...(data.settings || {}),

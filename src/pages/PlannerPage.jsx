@@ -7,9 +7,10 @@ import CalendarView from '../components/CalendarView';
 import SettingsPanel from '../components/SettingsPanel';
 import SidebarNav from '../components/SidebarNav';
 import AttendanceHistory from '../components/AttendanceHistory';
+import LeavePlanner from '../components/LeavePlanner';
 import { buildSubjectSummary, clearAttendanceForDate, getOverallAttendance, normalizeAttendanceRecords } from '../services/attendanceService';
 import { academicCalendar } from '../data/academicCalendar';
-import { getDayName } from '../utils/calendar';
+import { getDateSchedule, getDayName } from '../utils/calendar';
 import { formatPercent, getSafeBunks } from '../utils/attendance';
 
 export default function PlannerPage({ data, onSave, onExport, onImport, onReset }) {
@@ -18,16 +19,17 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
   const [activeView, setActiveView] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const attendanceSectionRef = useRef(null);
-  const summary = useMemo(() => buildSubjectSummary(data.subjects, data.attendance, selectedDate, data.timetable, academicCalendar), [data.subjects, data.attendance, data.timetable, selectedDate]);
+  const calendarContext = useMemo(() => ({ ...academicCalendar, dateRules: { ...(academicCalendar.dateRules || {}), ...(data.dateRules || {}) } }), [data.dateRules]);
+  const summary = useMemo(() => buildSubjectSummary(data.subjects, data.attendance, selectedDate, data.timetable, calendarContext), [data.subjects, data.attendance, data.timetable, selectedDate, calendarContext]);
   const overall = useMemo(() => getOverallAttendance(summary), [summary]);
   const selectedDayClasses = useMemo(() => {
     if (!selectedDate) {
       return [];
     }
 
-    const dayName = getDayName(selectedDate);
-    return Array.isArray(data.timetable?.[dayName]) ? data.timetable[dayName] : [];
-  }, [data.timetable, selectedDate]);
+    const schedule = getDateSchedule(selectedDate, data.timetable, calendarContext);
+    return schedule.timetable || [];
+  }, [data.timetable, selectedDate, calendarContext]);
 
   useEffect(() => {
     setDraftAttendance(data.attendance?.[selectedDate] || {});
@@ -49,7 +51,7 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
       { ...(data.attendance || {}), [selectedDate]: normalizedDraft },
       data.subjects,
       data.timetable,
-      academicCalendar,
+      calendarContext,
     );
 
     const nextData = { ...data, attendance: nextAttendance };
@@ -70,6 +72,17 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
 
   const handleSelectDate = (date) => {
     setSelectedDate(date);
+    setActiveView('attendance');
+  };
+
+  const updateDateRule = (date, nextRule) => {
+    const nextDateRules = { ...(data.dateRules || {}) };
+    if (!nextRule || Object.keys(nextRule).length === 0) {
+      delete nextDateRules[date];
+    } else {
+      nextDateRules[date] = nextRule;
+    }
+    onSave({ ...data, dateRules: nextDateRules });
   };
 
   const clearAttendance = () => {
@@ -193,13 +206,13 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
         return (
           <div className="space-y-6">
             <div id="attendance" ref={attendanceSectionRef}>
-              <TodayPage selectedDate={selectedDate} classes={selectedDayClasses} attendance={draftAttendance} onMarkAll={markAll} onMarkOne={markOne} onSave={saveAttendance} onClear={clearAttendance} onDeleteDate={deleteAttendanceForDate} />
+              <TodayPage selectedDate={selectedDate} classes={selectedDayClasses} attendance={draftAttendance} timetable={data.timetable} dateRule={data.dateRules?.[selectedDate] || null} calendar={calendarContext} onMarkAll={markAll} onMarkOne={markOne} onSave={saveAttendance} onClear={clearAttendance} onDeleteDate={deleteAttendanceForDate} onUpdateDateRule={updateDateRule} />
             </div>
             <BunkPredictor summary={summary} subjects={data.subjects} threshold={data.settings?.attendanceThreshold ?? 75} />
           </div>
         );
       case 'calendar':
-        return <CalendarView selectedDate={selectedDate} onSelectDate={handleSelectDate} attendanceRecords={data.attendance} />;
+        return <CalendarView selectedDate={selectedDate} onSelectDate={handleSelectDate} attendanceRecords={data.attendance} dateRules={data.dateRules || {}} />;
       case 'analytics':
         return <BunkPredictor summary={summary} subjects={data.subjects} threshold={data.settings?.attendanceThreshold ?? 75} />;
       case 'settings':
@@ -209,7 +222,7 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
       case 'bunk':
         return <BunkPredictor summary={summary} subjects={data.subjects} threshold={data.settings?.attendanceThreshold ?? 75} />;
       case 'leave':
-        return <div className="rounded-[28px] border border-slate-800 bg-slate-900/80 p-6">Leave planner view coming soon while preserving the existing attendance engine.</div>;
+        return <LeavePlanner subjects={data.subjects} attendanceRecords={data.attendance} timetable={data.timetable} calendar={calendarContext} threshold={data.settings?.attendanceThreshold ?? 75} />;
       default:
         return renderDashboard();
     }

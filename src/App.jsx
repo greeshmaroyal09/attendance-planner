@@ -10,8 +10,11 @@ const defaultData = {
     Wednesday: [],
     Thursday: [],
     Friday: [],
+    Saturday: [],
+    Sunday: [],
   },
   attendance: {},
+  dateRules: {},
   settings: {
     thresholds: [75, 80, 85, 90],
   },

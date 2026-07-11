@@ -1,17 +1,49 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { getDateSchedule } from "../utils/calendar";
 import { buildPeriodSlots } from "../utils/timetable";
 
 export default function TodayPage({
   selectedDate,
   classes,
   attendance,
+  timetable = {},
+  dateRule = null,
+  calendar = null,
   onMarkAll,
   onMarkOne,
   onSave,
   onClear,
   onDeleteDate,
+  onUpdateDateRule,
 }) {
   const [saved, setSaved] = useState(false);
+  const schedule = useMemo(() => getDateSchedule(selectedDate, timetable, calendar), [selectedDate, timetable, calendar]);
+  const weekdayOptions = useMemo(() => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].filter((day) => day in (timetable || {})), [timetable]);
+  const baseTimetable = useMemo(() => {
+    if (Array.isArray(dateRule?.customTimetable) && dateRule.customTimetable.length) {
+      return dateRule.customTimetable;
+    }
+    if (dateRule?.specialWorkingDaySource && Array.isArray(timetable?.[dateRule.specialWorkingDaySource])) {
+      return timetable[dateRule.specialWorkingDaySource];
+    }
+    return schedule.timetable || [];
+  }, [dateRule, timetable, schedule.timetable]);
+  const periodCount = Math.max(1, baseTimetable.length || 1);
+  const periodEntries = Array.from({ length: periodCount }, (_, index) => {
+    const periodLabel = `P${index + 1}`;
+    const isDisabled = (dateRule?.disabledPeriods || []).includes(periodLabel) || (dateRule?.disabledPeriods || []).includes(index + 1);
+    return { periodLabel, isDisabled };
+  });
+  const updateDateRule = (patch) => {
+    if (!onUpdateDateRule) {
+      return;
+    }
+    const nextRule = { ...(dateRule || {}), ...patch };
+    if (!nextRule.status) {
+      nextRule.status = 'working';
+    }
+    onUpdateDateRule(selectedDate, nextRule);
+  };
 
   const handleSave = () => {
     onSave();
@@ -33,7 +65,7 @@ export default function TodayPage({
             {selectedDate}
           </h2>
           <p className="text-sm text-slate-400">
-            Mark today’s classes and save your updates when ready.
+            {schedule.status === 'no-class' ? 'This date is marked as a no-class day.' : schedule.status === 'half-day' ? 'Only selected periods count on this half-day.' : 'Mark today’s classes and save your updates when ready.'}
           </p>
         </div>
 
@@ -43,8 +75,56 @@ export default function TodayPage({
         </div>
       </div>
 
+      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+        <div className="grid gap-3 lg:grid-cols-2">
+          <label className="text-sm text-slate-300">
+            <span className="mb-1 block text-slate-400">Date mode</span>
+            <select value={schedule.status} onChange={(event) => updateDateRule({ status: event.target.value })} className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100">
+              <option value="working">Working Day</option>
+              <option value="holiday">Holiday</option>
+              <option value="no-class">No Class Day</option>
+              <option value="half-day">Half Day</option>
+            </select>
+          </label>
+          <label className="text-sm text-slate-300">
+            <span className="mb-1 block text-slate-400">Use timetable from</span>
+            <select value={dateRule?.specialWorkingDaySource || ''} onChange={(event) => updateDateRule({ specialWorkingDaySource: event.target.value })} className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100">
+              <option value="">Default weekday</option>
+              {weekdayOptions.map((day) => <option key={day} value={day}>{day}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="mt-3 block text-sm text-slate-300">
+          <span className="mb-1 block text-slate-400">Custom timetable (comma separated)</span>
+          <input value={Array.isArray(dateRule?.customTimetable) ? dateRule.customTimetable.join(', ') : ''} onChange={(event) => updateDateRule({ customTimetable: event.target.value.split(',').map((entry) => entry.trim()).filter(Boolean) })} className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100" placeholder="OS, Math, DBMS" />
+        </label>
+        {schedule.status === 'half-day' && (
+          <div className="mt-3">
+            <p className="mb-2 text-sm text-slate-400">Disable periods for this date</p>
+            <div className="flex flex-wrap gap-2">
+              {periodEntries.map((entry) => (
+                <button key={entry.periodLabel} type="button" onClick={() => {
+                  const nextDisabledPeriods = [...(dateRule?.disabledPeriods || [])];
+                  const periodValue = entry.periodLabel;
+                  const index = nextDisabledPeriods.indexOf(periodValue);
+                  if (index >= 0) nextDisabledPeriods.splice(index, 1);
+                  else nextDisabledPeriods.push(periodValue);
+                  updateDateRule({ disabledPeriods: nextDisabledPeriods });
+                }} className={`rounded-full border px-3 py-1 text-sm ${entry.isDisabled ? 'border-amber-500 bg-amber-500/20 text-amber-200' : 'border-slate-700 bg-slate-900 text-slate-200'}`}>
+                  {entry.periodLabel}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="space-y-3">
-        {slots.length ? (
+        {schedule.status === 'no-class' ? (
+          <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 p-3 text-sm text-violet-200">
+            No classes are scheduled for this day, so there is nothing to mark.
+          </div>
+        ) : slots.length ? (
           slots.map((slot) => (
             <div
               key={slot.period}
@@ -101,9 +181,10 @@ export default function TodayPage({
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <button
           onClick={handleSave}
+          disabled={schedule.status === 'no-class'}
           className={`w-full rounded-2xl px-3 py-3 text-sm font-medium sm:w-auto transition-all ${
             saved ? "bg-emerald-600" : "bg-cyan-600"
-          }`}
+          } ${schedule.status === 'no-class' ? 'cursor-not-allowed opacity-60' : ''}`}
         >
           {saved ? "✓ Saved Successfully" : "Save Attendance"}
         </button>
