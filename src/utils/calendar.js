@@ -27,11 +27,12 @@ export function isWorkingDay(dateString, calendar = academicCalendar) {
   const normalizedDate = toIsoDate(date);
   if (day === 0 || day === 6) return false;
   if (normalizedDate < calendar.startDate || normalizedDate > calendar.lastWorkingDay) return false;
-  if (calendar.holidays.includes(normalizedDate)) return false;
-  if (calendar.poojaHolidays.includes(normalizedDate)) return false;
-  if (calendar.deepavaliHolidays.includes(normalizedDate)) return false;
-  if (calendar.midExams.includes(normalizedDate)) return false;
-  if (calendar.endExams.includes(normalizedDate)) return false;
+  if (calendar.holidays?.includes(normalizedDate)) return false;
+  if (calendar.poojaHolidays?.includes(normalizedDate)) return false;
+  if (calendar.deepavaliHolidays?.includes(normalizedDate)) return false;
+  if (calendar.customHolidays?.includes(normalizedDate)) return false;
+  if (calendar.midExams?.includes(normalizedDate)) return false;
+  if (calendar.endExams?.includes(normalizedDate)) return false;
   return true;
 }
 
@@ -43,10 +44,11 @@ export function getCalendarStats(calendar = academicCalendar) {
   const workingDays = getWorkingDays(calendar);
   return {
     workingDaysCount: workingDays.length,
-    holidayCount: calendar.holidays.length,
-    poojaHolidayCount: calendar.poojaHolidays.length,
-    deepavaliHolidayCount: calendar.deepavaliHolidays.length,
-    examCount: calendar.midExams.length + calendar.endExams.length,
+    holidayCount: calendar.holidays?.length || 0,
+    poojaHolidayCount: calendar.poojaHolidays?.length || 0,
+    deepavaliHolidayCount: calendar.deepavaliHolidays?.length || 0,
+    customHolidayCount: calendar.customHolidays?.length || 0,
+    examCount: (calendar.midExams?.length || 0) + (calendar.endExams?.length || 0),
   };
 }
 

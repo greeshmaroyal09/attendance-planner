@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSubjectSummary, clearAttendanceForDate } from './attendanceService';
+import { buildSubjectSummary, clearAttendanceForDate, normalizeAttendanceRecords } from './attendanceService';
 import { academicCalendar } from '../data/academicCalendar';
 import { getDayName, isWorkingDay } from '../utils/calendar';
 
@@ -83,5 +83,30 @@ describe('buildSubjectSummary', () => {
     );
 
     expect(summary[0].remaining).toBe(1);
+  });
+
+  it('removes attendance entries that no longer match the current timetable or subjects', () => {
+    const subjects = [
+      { id: '1', name: 'OS' },
+      { id: '2', name: 'DBMS' },
+    ];
+
+    const timetable = {
+      Monday: ['OS'],
+      Tuesday: ['DBMS'],
+    };
+
+    const normalized = normalizeAttendanceRecords(
+      {
+        '2026-07-06': { OS: 'present', DL: 'absent', 'legacy-slot': 'present' },
+        '2026-07-07': { DBMS: 'present', CN: 'absent' },
+      },
+      subjects,
+      timetable,
+      academicCalendar,
+    );
+
+    expect(normalized['2026-07-06']).toEqual({ OS: 'present' });
+    expect(normalized['2026-07-07']).toEqual({ DBMS: 'present' });
   });
 });

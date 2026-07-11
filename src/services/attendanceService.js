@@ -1,6 +1,49 @@
 import { calculateAttendance } from '../utils/attendance';
 import { getDateRange, getDayName, isWorkingDay } from '../utils/calendar';
 
+function getValidSubjectNames(subjects = []) {
+  return new Set((subjects || []).map((subject) => subject?.name).filter(Boolean));
+}
+
+function getDayTimetable(dayName, timetable = {}) {
+  return Array.isArray(timetable?.[dayName]) ? timetable[dayName] : [];
+}
+
+export function normalizeAttendanceRecords(attendanceRecords = {}, subjects = [], timetable = {}, calendar = null) {
+  const nextRecords = {};
+  const validSubjects = getValidSubjectNames(subjects);
+
+  Object.entries(attendanceRecords || {}).forEach(([date, record]) => {
+    if (!date || !record || typeof record !== 'object' || Array.isArray(record)) {
+      return;
+    }
+
+    const dayName = getDayName(date);
+    const activeSubjects = new Set(getDayTimetable(dayName, timetable).filter((entry) => validSubjects.has(entry)));
+    const normalizedRecord = Object.entries(record).reduce((acc, [subjectName, status]) => {
+      if (!subjectName || !validSubjects.has(subjectName)) {
+        return acc;
+      }
+
+      if (!activeSubjects.has(subjectName)) {
+        return acc;
+      }
+
+      if (status === 'present' || status === 'absent') {
+        acc[subjectName] = status;
+      }
+
+      return acc;
+    }, {});
+
+    if (Object.keys(normalizedRecord).length) {
+      nextRecords[date] = normalizedRecord;
+    }
+  });
+
+  return nextRecords;
+}
+
 export function clearAttendanceForDate(attendanceRecords = {}, date) {
   if (!date) {
     return attendanceRecords;
@@ -24,12 +67,13 @@ function countFutureOccurrences(subjectName, selectedDate, timetable = {}, calen
 }
 
 export function buildSubjectSummary(subjects, attendanceRecords, selectedDate = new Date().toISOString().split('T')[0], timetable = {}, calendar = null) {
+  const normalizedRecords = normalizeAttendanceRecords(attendanceRecords, subjects, timetable, calendar);
 
   const summary = (subjects || []).map((subject) => {
     let attended = 0;
     let conducted = 0;
 
-    Object.values(attendanceRecords || {}).forEach((record) => {
+    Object.values(normalizedRecords || {}).forEach((record) => {
       if (record?.[subject.name] === 'present') {
         attended += 1;
         conducted += 1;

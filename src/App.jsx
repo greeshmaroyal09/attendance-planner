@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import PlannerPage from './pages/PlannerPage';
-import { academicCalendar } from './data/academicCalendar';
 import { exportUserData, importUserData, loadUserData, saveUserData } from './storage/localStorage';
 
 const defaultData = {
@@ -42,22 +41,8 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 text-slate-100">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Offline Attendance Planning</p>
-              <h1 className="text-2xl font-semibold">Attendance Planner & Bunk Predictor</h1>
-              <p className="mt-1 text-sm text-slate-400">Built-in KARE Odd Semester 2026-27 calendar</p>
-            </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-400">
-              {academicCalendar.semesterName}
-            </div>
-          </div>
-        </header>
-        <PlannerPage data={data} onSave={persist} onExport={handleExport} onImport={handleImport} onReset={handleReset} />
-      </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <PlannerPage data={data} onSave={persist} onExport={handleExport} onImport={handleImport} onReset={handleReset} />
     </div>
   );
 }

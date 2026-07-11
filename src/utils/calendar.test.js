@@ -8,3 +8,21 @@ describe('getDayName', () => {
     expect(getDayName('2026-07-08')).toBe('Wednesday');
   });
 });
+
+describe('isWorkingDay', () => {
+  it('treats custom holidays as non-working days', async () => {
+    const { isWorkingDay } = await import('./calendar.js');
+    const calendar = {
+      startDate: '2026-07-06',
+      lastWorkingDay: '2026-07-10',
+      holidays: [],
+      poojaHolidays: [],
+      deepavaliHolidays: [],
+      midExams: [],
+      endExams: [],
+      customHolidays: ['2026-07-08'],
+    };
+
+    expect(isWorkingDay('2026-07-08', calendar)).toBe(false);
+  });
+});
