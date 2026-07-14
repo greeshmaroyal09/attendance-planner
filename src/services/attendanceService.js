@@ -10,6 +10,38 @@ function getDayTimetable(date, timetable = {}, calendar = null) {
   return schedule.timetable || [];
 }
 
+function countSubjectSlots(subjectName, date, timetable = {}, calendar = null) {
+  return getDayTimetable(date, timetable, calendar).filter((entry) => entry === subjectName).length;
+}
+
+function getSubjectAttendanceCounts(subjectName, record, date, timetable = {}, calendar = null, fallbackToSingle = false) {
+  const slotCount = countSubjectSlots(subjectName, date, timetable, calendar);
+
+  if (slotCount > 0) {
+    if (record?.[subjectName] === 'present') {
+      return { attended: slotCount, conducted: slotCount };
+    }
+
+    if (record?.[subjectName] === 'absent') {
+      return { attended: 0, conducted: slotCount };
+    }
+  }
+
+  if (!fallbackToSingle) {
+    return { attended: 0, conducted: 0 };
+  }
+
+  if (record?.[subjectName] === 'present') {
+    return { attended: 1, conducted: 1 };
+  }
+
+  if (record?.[subjectName] === 'absent') {
+    return { attended: 0, conducted: 1 };
+  }
+
+  return { attended: 0, conducted: 0 };
+}
+
 export function normalizeAttendanceRecords(attendanceRecords = {}, subjects = [], timetable = {}, calendar = null) {
   const nextRecords = {};
   const validSubjects = getValidSubjectNames(subjects);
@@ -72,13 +104,10 @@ export function buildSubjectSummary(subjects, attendanceRecords, selectedDate = 
     let attended = 0;
     let conducted = 0;
 
-    Object.values(normalizedRecords || {}).forEach((record) => {
-      if (record?.[subject.name] === 'present') {
-        attended += 1;
-        conducted += 1;
-      } else if (record?.[subject.name] === 'absent') {
-        conducted += 1;
-      }
+    Object.entries(normalizedRecords || {}).forEach(([date, record]) => {
+      const counts = getSubjectAttendanceCounts(subject.name, record, date, timetable, calendar, false);
+      attended += counts.attended;
+      conducted += counts.conducted;
     });
 
     const futureOccurrences = countFutureOccurrences(subject.name, selectedDate, timetable, calendar);
@@ -112,12 +141,9 @@ export function buildLeavePrediction(subjects, attendanceRecords, startDate, end
         return;
       }
 
-      if (record?.[subject.name] === 'present') {
-        currentPresent += 1;
-        currentConducted += 1;
-      } else if (record?.[subject.name] === 'absent') {
-        currentConducted += 1;
-      }
+      const counts = getSubjectAttendanceCounts(subject.name, record, date, timetable, calendar, true);
+      currentPresent += counts.attended;
+      currentConducted += counts.conducted;
     });
 
     let futureMissed = 0;

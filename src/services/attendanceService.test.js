@@ -53,6 +53,15 @@ describe('buildSubjectSummary', () => {
     expect(cn.remaining).toBe(expectedOccurrences('CN'));
   });
 
+  it('counts each repeated subject slot as a separate class for the same day', () => {
+    const subjects = [{ id: '1', name: 'OS' }];
+    const timetable = { Monday: ['OS', 'OS'] };
+
+    const summary = buildSubjectSummary(subjects, { '2026-07-06': { OS: 'present' } }, '2026-07-07', timetable, academicCalendar);
+
+    expect(summary[0]).toMatchObject({ attended: 2, conducted: 2, percentage: 100 });
+  });
+
   it('removes a saved attendance entry for a selected date', () => {
     const attendanceRecords = {
       '2026-07-06': { OS: 'present' },
