@@ -144,10 +144,10 @@ export default function TodayPage({
                 <div className="flex w-full gap-2 sm:w-auto">
                   <button
                     onClick={() =>
-                      onMarkOne(slot.subjectName, "present")
+                      onMarkOne(slot, "present")
                     }
                     className={`flex-1 rounded-lg px-3 py-3 text-sm font-medium sm:flex-none ${
-                      attendance?.[slot.subjectName] === "present"
+                      attendance?.[slot.period] === "present"
                         ? "bg-emerald-600"
                         : "bg-slate-800"
                     }`}
@@ -157,10 +157,10 @@ export default function TodayPage({
 
                   <button
                     onClick={() =>
-                      onMarkOne(slot.subjectName, "absent")
+                      onMarkOne(slot, "absent")
                     }
                     className={`flex-1 rounded-lg px-3 py-3 text-sm font-medium sm:flex-none ${
-                      attendance?.[slot.subjectName] === "absent"
+                      attendance?.[slot.period] === "absent"
                         ? "bg-rose-600"
                         : "bg-slate-800"
                     }`}

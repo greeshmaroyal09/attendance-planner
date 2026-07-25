@@ -1,5 +1,6 @@
 import { calculateAttendance } from '../utils/attendance';
 import { getDateRange, getDateSchedule, isWorkingDay } from '../utils/calendar';
+import { buildPeriodSlots } from '../utils/timetable';
 
 function getValidSubjectNames(subjects = []) {
   return new Set((subjects || []).map((subject) => subject?.name).filter(Boolean));
@@ -15,15 +16,26 @@ function countSubjectSlots(subjectName, date, timetable = {}, calendar = null) {
 }
 
 function getSubjectAttendanceCounts(subjectName, record, date, timetable = {}, calendar = null, fallbackToSingle = false) {
-  const slotCount = countSubjectSlots(subjectName, date, timetable, calendar);
+  const slots = buildPeriodSlots(getDayTimetable(date, timetable, calendar));
+  const matchingSlots = slots.filter((slot) => !slot.isEmpty && slot.subjectName === subjectName);
 
-  if (slotCount > 0) {
-    if (record?.[subjectName] === 'present') {
-      return { attended: slotCount, conducted: slotCount };
-    }
+  if (matchingSlots.length > 0) {
+    const periodCounts = matchingSlots.reduce((counts, slot) => {
+      const periodStatus = record?.[slot.period];
+      const legacyStatus = record?.[subjectName];
+      const status = periodStatus || (!matchingSlots.some((candidate) => typeof record?.[candidate.period] === 'string') ? legacyStatus : null);
 
-    if (record?.[subjectName] === 'absent') {
-      return { attended: 0, conducted: slotCount };
+      if (status === 'present') {
+        counts.attended += 1;
+        counts.conducted += 1;
+      } else if (status === 'absent') {
+        counts.conducted += 1;
+      }
+      return counts;
+    }, { attended: 0, conducted: 0 });
+
+    if (periodCounts.conducted > 0) {
+      return periodCounts;
     }
   }
 
@@ -51,18 +63,24 @@ export function normalizeAttendanceRecords(attendanceRecords = {}, subjects = []
       return;
     }
 
-    const activeSubjects = new Set(getDayTimetable(date, timetable, calendar).filter((entry) => validSubjects.has(entry)));
-    const normalizedRecord = Object.entries(record).reduce((acc, [subjectName, status]) => {
-      if (!subjectName || !validSubjects.has(subjectName)) {
+    const activeSlots = buildPeriodSlots(getDayTimetable(date, timetable, calendar)).filter((slot) => !slot.isEmpty && validSubjects.has(slot.subjectName));
+    const normalizedRecord = Object.entries(record).reduce((acc, [key, status]) => {
+      if (!key || !['present', 'absent'].includes(status)) {
         return acc;
       }
 
-      if (!activeSubjects.has(subjectName)) {
+      const matchingSlots = activeSlots.filter((slot) => slot.period === key);
+      if (matchingSlots.length) {
+        acc[key] = status;
         return acc;
       }
 
-      if (status === 'present' || status === 'absent') {
-        acc[subjectName] = status;
+      const subjectMatches = activeSlots.filter((slot) => slot.subjectName === key);
+      if (subjectMatches.length) {
+        subjectMatches.forEach((slot) => {
+          acc[slot.period] = status;
+        });
+        return acc;
       }
 
       return acc;

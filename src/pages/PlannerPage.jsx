@@ -12,6 +12,7 @@ import { buildSubjectSummary, clearAttendanceForDate, getOverallAttendance, norm
 import { academicCalendar } from '../data/academicCalendar';
 import { getDateSchedule, getDayName } from '../utils/calendar';
 import { formatPercent, getSafeBunks } from '../utils/attendance';
+import { buildPeriodSlots } from '../utils/timetable';
 
 export default function PlannerPage({ data, onSave, onExport, onImport, onReset }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -40,9 +41,9 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
   }, [selectedDate]);
 
   const saveAttendance = () => {
-    const normalizedDraft = Object.entries(draftAttendance || {}).reduce((acc, [subjectName, status]) => {
+    const normalizedDraft = Object.entries(draftAttendance || {}).reduce((acc, [periodKey, status]) => {
       if (status === 'present' || status === 'absent') {
-        acc[subjectName] = status;
+        acc[periodKey] = status;
       }
       return acc;
     }, {});
@@ -60,14 +61,20 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
 
   const markAll = (status) => {
     const next = {};
-    selectedDayClasses.filter(Boolean).forEach((subjectName) => {
-      next[subjectName] = status;
-    });
+    buildPeriodSlots(selectedDayClasses)
+      .filter((slot) => !slot.isEmpty)
+      .forEach((slot) => {
+        next[slot.period] = status;
+      });
     setDraftAttendance(next);
   };
 
-  const markOne = (subjectName, status) => {
-    setDraftAttendance((current) => ({ ...current, [subjectName]: status }));
+  const markOne = (slot, status) => {
+    if (!slot?.period) {
+      return;
+    }
+
+    setDraftAttendance((current) => ({ ...current, [slot.period]: status }));
   };
 
   const handleSelectDate = (date) => {

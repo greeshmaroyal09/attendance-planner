@@ -62,6 +62,22 @@ describe('buildSubjectSummary', () => {
     expect(summary[0]).toMatchObject({ attended: 2, conducted: 2, percentage: 100 });
   });
 
+  it('tracks repeated subjects independently by timetable period', () => {
+    const subjects = [{ id: '1', name: 'CN' }];
+    const timetable = { Monday: ['CN', 'CN', 'CN'] };
+
+    const normalized = normalizeAttendanceRecords(
+      { '2026-07-06': { P1: 'absent', P3: 'present' } },
+      subjects,
+      timetable,
+      academicCalendar,
+    );
+    const summary = buildSubjectSummary(subjects, normalized, '2026-07-07', timetable, academicCalendar);
+
+    expect(normalized['2026-07-06']).toEqual({ P1: 'absent', P3: 'present' });
+    expect(summary[0]).toMatchObject({ attended: 1, conducted: 2, percentage: 50 });
+  });
+
   it('removes a saved attendance entry for a selected date', () => {
     const attendanceRecords = {
       '2026-07-06': { OS: 'present' },
@@ -187,7 +203,7 @@ describe('buildSubjectSummary', () => {
       academicCalendar,
     );
 
-    expect(normalized['2026-07-06']).toEqual({ OS: 'present' });
-    expect(normalized['2026-07-07']).toEqual({ DBMS: 'present' });
+    expect(normalized['2026-07-06']).toEqual({ P1: 'present' });
+    expect(normalized['2026-07-07']).toEqual({ P1: 'present' });
   });
 });
