@@ -106,6 +106,13 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
               <h3 className="text-xl font-semibold uppercase tracking-[0.12em] text-white">{formatMonthLabel(selectedMonth)}</h3>
             </div>
 
+            <div className="mb-3 flex flex-wrap items-center justify-center gap-2 px-3 pt-3 text-[10px] text-slate-300">
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1">W = Working</span>
+              <span className="rounded-full border border-violet-500/40 bg-violet-500/10 px-2 py-1">OFF = Off</span>
+              <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-1">HOL = Holiday</span>
+              <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-1">✓ = Attendance Saved</span>
+            </div>
+
             <div className="grid grid-cols-7 gap-1 border-b border-slate-700 bg-slate-900/70 p-2 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
               {WEEKDAY_LABELS.map((day) => (
                 <div key={day} className="py-2">
@@ -136,17 +143,23 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
                 else if (isHoliday) badge = 'border-rose-500/60 bg-rose-500/20 text-rose-300';
                 else if (working) badge = 'border-emerald-500/60 bg-emerald-500/20 text-emerald-300';
 
+                let cellLabel = 'OFF';
+                if (schedule.status === 'no-class') cellLabel = 'OFF';
+                else if (schedule.status === 'half-day') cellLabel = 'W';
+                else if (isHoliday) cellLabel = 'HOL';
+                else if (working) cellLabel = 'W';
+                else if (!working) cellLabel = 'OFF';
+
                 return (
                   <button
                     key={date}
                     type="button"
                     onClick={() => onSelectDate(date)}
-                    className={`flex h-20 flex-col items-start justify-between rounded-xl border p-2 text-left text-[10px] shadow-sm shadow-slate-950/20 transition hover:border-cyan-500 ${badge}`}
+                    className={`flex h-20 w-full flex-col items-center justify-between rounded-xl border p-1 text-center shadow-sm shadow-slate-950/20 transition hover:border-cyan-500 ${badge}`}
                   >
-                    <span className="font-semibold">{new Date(`${date}T00:00:00Z`).getUTCDate()}</span>
-                    <span className="text-[9px] uppercase tracking-[0.12em] opacity-80">
-                      {schedule.status === 'no-class' ? 'No Class' : schedule.status === 'half-day' ? 'Half Day' : working ? 'Working' : 'Off'}
-                    </span>
+                    <span className="text-[10px] font-semibold leading-none">{new Date(`${date}T00:00:00Z`).getUTCDate()}</span>
+                    <span className="text-[9px] font-bold uppercase leading-none tracking-[0.08em]">{cellLabel}</span>
+                    {hasAttendanceRecord && <span className="text-[11px] font-bold leading-none text-emerald-300">✓</span>}
                   </button>
                 );
               })}
