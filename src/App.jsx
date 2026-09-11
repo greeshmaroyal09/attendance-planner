@@ -16,7 +16,7 @@ const defaultData = {
   attendance: {},
   dateRules: {},
   settings: {
-    thresholds: [75, 80, 85, 90],
+    thresholds: [75, 80, 85, 90, 95],
   },
 };
 

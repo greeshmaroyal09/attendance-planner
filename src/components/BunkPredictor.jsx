@@ -17,6 +17,7 @@ export default function BunkPredictor({ summary, subjects, threshold: thresholdV
           <option value={80}>80%</option>
           <option value={85}>85%</option>
           <option value={90}>90%</option>
+          <option value={95}>95%</option>
         </select>
       </div>
       <div className="space-y-3">

@@ -113,7 +113,8 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
   };
 
   const handleThresholdChange = (nextThreshold) => {
-    onSave({ ...data, settings: { ...(data.settings || {}), attendanceThreshold: nextThreshold, thresholds: [...(data.settings?.thresholds || [75, 80, 85, 90])] } });
+    const thresholds = Array.from(new Set([75, 80, 85, 90, 95, ...(data.settings?.thresholds || [])])).sort((a, b) => a - b);
+    onSave({ ...data, settings: { ...(data.settings || {}), attendanceThreshold: nextThreshold, thresholds } });
   };
 
   const handleNavigate = (view) => {

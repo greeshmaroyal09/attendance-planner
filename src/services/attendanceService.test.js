@@ -2,8 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { buildLeavePrediction, buildSubjectSummary, clearAttendanceForDate, normalizeAttendanceRecords } from './attendanceService';
 import { academicCalendar } from '../data/academicCalendar';
 import { getDayName, isWorkingDay } from '../utils/calendar';
+import { normalizeUserData } from '../storage/localStorage';
 
 describe('buildSubjectSummary', () => {
+  it('includes 95% as a supported default attendance threshold option', () => {
+    const normalized = normalizeUserData({});
+
+    expect(normalized.settings.thresholds).toContain(95);
+    expect(normalized.settings.attendanceThreshold).toBe(75);
+  });
+
   it('counts future subject occurrences from the selected date onward using the timetable', () => {
     const subjects = [
       { id: '1', name: 'OS' },

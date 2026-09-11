@@ -1,9 +1,10 @@
 const STORAGE_KEY = 'attendance-planner-user-data';
+const DEFAULT_THRESHOLDS = [75, 80, 85, 90, 95];
 
 function createDefaultSettings() {
   return {
     attendanceThreshold: 75,
-    thresholds: [75, 80, 85, 90],
+    thresholds: DEFAULT_THRESHOLDS,
   };
 }
 
@@ -33,10 +34,15 @@ export function normalizeUserData(data) {
   nextData.timetable = data.timetable && typeof data.timetable === 'object' ? data.timetable : defaultData.timetable;
   nextData.attendance = data.attendance && typeof data.attendance === 'object' ? data.attendance : {};
   nextData.dateRules = data.dateRules && typeof data.dateRules === 'object' ? data.dateRules : {};
+  const normalizedThresholds = Array.from(new Set([
+    ...DEFAULT_THRESHOLDS,
+    ...(Array.isArray(data.settings?.thresholds) ? data.settings.thresholds.filter((value) => typeof value === 'number' && Number.isFinite(value)) : []),
+  ])).sort((a, b) => a - b);
+
   nextData.settings = {
     ...createDefaultSettings(),
     ...(data.settings || {}),
-    thresholds: Array.isArray(data.settings?.thresholds) && data.settings.thresholds.length ? data.settings.thresholds : createDefaultSettings().thresholds,
+    thresholds: normalizedThresholds,
     attendanceThreshold: data.settings?.attendanceThreshold ?? data.threshold ?? 75,
   };
 
