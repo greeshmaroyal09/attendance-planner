@@ -8,3 +8,7 @@ export function registerPwaServiceWorker() {
     return false;
   });
 }
+
+export function isPwaInstallPromptSupported() {
+  return typeof window !== 'undefined' && 'BeforeInstallPromptEvent' in window;
+}
