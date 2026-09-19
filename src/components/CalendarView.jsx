@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { academicCalendar } from '../data/academicCalendar';
 import { getCalendarStats, getDateRange, getDateSchedule, isWorkingDay } from '../utils/calendar';
 
@@ -14,12 +14,18 @@ function formatMonthLabel(monthKey) {
   return safeDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).toUpperCase();
 }
 
-export default function CalendarView({ selectedDate, onSelectDate, attendanceRecords, dateRules = {} }) {
+export default function CalendarView({ selectedDate, selectedMonth, onSelectMonth, onSelectDate, attendanceRecords, dateRules = {} }) {
   const calendar = { ...academicCalendar, dateRules };
   const stats = getCalendarStats(calendar);
   const dates = useMemo(() => getDateRange(academicCalendar.startDate, academicCalendar.lastWorkingDay), []);
   const today = new Date().toISOString().split('T')[0];
-  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [internalSelectedMonth, setInternalSelectedMonth] = useState(selectedMonth ?? null);
+
+  useEffect(() => {
+    setInternalSelectedMonth(selectedMonth ?? null);
+  }, [selectedMonth]);
+
+  const activeMonth = selectedMonth ?? internalSelectedMonth;
 
   const monthCards = useMemo(() => {
     const months = [];
@@ -37,19 +43,19 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
   }, [dates]);
 
   const selectedMonthDates = useMemo(() => {
-    if (!selectedMonth) {
+    if (!activeMonth) {
       return [];
     }
 
-    return dates.filter((date) => getMonthKey(date) === selectedMonth);
-  }, [dates, selectedMonth]);
+    return dates.filter((date) => getMonthKey(date) === activeMonth);
+  }, [dates, activeMonth]);
 
   const selectedMonthGrid = useMemo(() => {
-    if (!selectedMonth) {
+    if (!activeMonth) {
       return [];
     }
 
-    const startOfMonth = new Date(`${selectedMonth}-01T00:00:00Z`);
+    const startOfMonth = new Date(`${activeMonth}-01T00:00:00Z`);
     const leadingEmptyDays = startOfMonth.getUTCDay();
     const cells = Array.from({ length: leadingEmptyDays }, () => null);
     selectedMonthDates.forEach((date) => cells.push(date));
@@ -59,7 +65,15 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
     }
 
     return cells;
-  }, [selectedMonth, selectedMonthDates]);
+  }, [activeMonth, selectedMonthDates]);
+
+  const handleMonthChange = (nextMonth) => {
+    if (onSelectMonth) {
+      onSelectMonth(nextMonth);
+      return;
+    }
+    setInternalSelectedMonth(nextMonth);
+  };
 
   return (
     <div className="rounded-[28px] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl shadow-slate-950/30 sm:p-6">
@@ -77,13 +91,13 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
         </div>
       </div>
 
-      {!selectedMonth ? (
+      {!activeMonth ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {monthCards.map((month) => (
             <button
               key={month.key}
               type="button"
-              onClick={() => setSelectedMonth(month.key)}
+              onClick={() => handleMonthChange(month.key)}
               className="rounded-2xl border border-slate-700 bg-slate-950/60 px-4 py-5 text-center text-lg font-semibold uppercase tracking-[0.12em] text-slate-100 transition hover:border-cyan-500 hover:bg-slate-900 shadow-lg shadow-slate-950/20"
             >
               {month.label}
@@ -94,7 +108,7 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
         <div className="space-y-4">
           <button
             type="button"
-            onClick={() => setSelectedMonth(null)}
+            onClick={() => handleMonthChange(null)}
             className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-500 hover:text-cyan-300"
           >
             <span aria-hidden="true">←</span>
@@ -103,7 +117,7 @@ export default function CalendarView({ selectedDate, onSelectDate, attendanceRec
 
           <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/60">
             <div className="border-b border-slate-700 px-4 py-3 text-center">
-              <h3 className="text-xl font-semibold uppercase tracking-[0.12em] text-white">{formatMonthLabel(selectedMonth)}</h3>
+              <h3 className="text-xl font-semibold uppercase tracking-[0.12em] text-white">{formatMonthLabel(activeMonth)}</h3>
             </div>
 
             <div className="mb-3 flex flex-wrap items-center justify-center gap-2 px-3 pt-3 text-[10px] text-slate-300">

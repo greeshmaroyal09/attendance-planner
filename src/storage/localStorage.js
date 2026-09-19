@@ -5,6 +5,10 @@ function createDefaultSettings() {
   return {
     attendanceThreshold: 75,
     thresholds: DEFAULT_THRESHOLDS,
+    reminders: {
+      attendance: true,
+      tomorrowClasses: true,
+    },
   };
 }
 
@@ -39,11 +43,21 @@ export function normalizeUserData(data) {
     ...(Array.isArray(data.settings?.thresholds) ? data.settings.thresholds.filter((value) => typeof value === 'number' && Number.isFinite(value)) : []),
   ])).sort((a, b) => a - b);
 
+  const reminderSettings = {
+    attendance: data.settings?.reminders?.attendance ?? true,
+    tomorrowClasses: data.settings?.reminders?.tomorrowClasses ?? true,
+  };
+
   nextData.settings = {
     ...createDefaultSettings(),
     ...(data.settings || {}),
     thresholds: normalizedThresholds,
     attendanceThreshold: data.settings?.attendanceThreshold ?? data.threshold ?? 75,
+    reminders: {
+      ...createDefaultSettings().reminders,
+      ...(data.settings?.reminders || {}),
+      ...reminderSettings,
+    },
   };
 
   return nextData;

@@ -13,11 +13,13 @@ import { academicCalendar } from '../data/academicCalendar';
 import { getDateSchedule, getDayName } from '../utils/calendar';
 import { formatPercent, getSafeBunks } from '../utils/attendance';
 import { buildPeriodSlots } from '../utils/timetable';
+import { createNavigationEntry, getNavigationStateFromHash } from '../utils/navigation';
 
 export default function PlannerPage({ data, onSave, onExport, onImport, onReset }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [draftAttendance, setDraftAttendance] = useState({});
   const [activeView, setActiveView] = useState('dashboard');
+  const [selectedCalendarMonth, setSelectedCalendarMonth] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const attendanceSectionRef = useRef(null);
   const calendarContext = useMemo(() => ({ ...academicCalendar, dateRules: { ...(academicCalendar.dateRules || {}), ...(data.dateRules || {}) } }), [data.dateRules]);
@@ -32,6 +34,33 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
     return schedule.timetable || [];
   }, [data.timetable, selectedDate, calendarContext]);
 
+  const syncViewFromUrl = (state) => {
+    if (!state || state.type === 'root') {
+      setActiveView('dashboard');
+      setSelectedCalendarMonth(null);
+      return;
+    }
+
+    if (state.type === 'feature') {
+      setActiveView(state.view || 'dashboard');
+      setSelectedCalendarMonth(null);
+    }
+  };
+
+  const pushNavigationState = (view) => {
+    const nextEntry = createNavigationEntry(view);
+    if (!nextEntry) {
+      if (window.location.hash) {
+        window.history.pushState(null, '', window.location.pathname);
+      }
+      return;
+    }
+
+    if (window.location.hash !== nextEntry) {
+      window.history.pushState(null, '', nextEntry);
+    }
+  };
+
   useEffect(() => {
     setDraftAttendance(data.attendance?.[selectedDate] || {});
   }, [data.attendance, selectedDate]);
@@ -39,6 +68,27 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
   useEffect(() => {
     attendanceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [selectedDate]);
+
+  useEffect(() => {
+    const syncFromLocation = () => {
+      const state = getNavigationStateFromHash(window.location.hash);
+      if (state.type === 'feature') {
+        setActiveView(state.view || 'dashboard');
+        setSelectedCalendarMonth(null);
+        return;
+      }
+      setActiveView('dashboard');
+      setSelectedCalendarMonth(null);
+    };
+
+    syncFromLocation();
+    window.addEventListener('hashchange', syncFromLocation);
+    window.addEventListener('popstate', syncFromLocation);
+    return () => {
+      window.removeEventListener('hashchange', syncFromLocation);
+      window.removeEventListener('popstate', syncFromLocation);
+    };
+  }, []);
 
   const saveAttendance = () => {
     const normalizedDraft = Object.entries(draftAttendance || {}).reduce((acc, [periodKey, status]) => {
@@ -78,7 +128,9 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
   };
 
   const handleSelectDate = (date) => {
+    const monthKey = date.slice(0, 7);
     setSelectedDate(date);
+    setSelectedCalendarMonth(monthKey);
     setActiveView('attendance');
   };
 
@@ -117,9 +169,47 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
     onSave({ ...data, settings: { ...(data.settings || {}), attendanceThreshold: nextThreshold, thresholds } });
   };
 
+  const handleReminderToggle = (type, enabled) => {
+    const nextSettings = {
+      ...(data.settings || {}),
+      reminders: {
+        attendance: true,
+        tomorrowClasses: true,
+        ...((data.settings && data.settings.reminders) || {}),
+        [type]: enabled,
+      },
+    };
+    onSave({ ...data, settings: nextSettings });
+  };
+
+  const handleReminderPermissionRequest = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      window.alert('Browser notifications are not supported on this device.');
+      return false;
+    }
+
+    if (Notification.permission === 'granted') {
+      return true;
+    }
+
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  };
+
   const handleNavigate = (view) => {
-    setActiveView(view);
     setSidebarOpen(false);
+
+    if (view === 'dashboard') {
+      setActiveView('dashboard');
+      setSelectedCalendarMonth(null);
+      if (window.location.hash) {
+        window.history.pushState(null, '', window.location.pathname);
+      }
+      return;
+    }
+
+    setActiveView(view);
+    pushNavigationState(view);
     if (view === 'attendance') {
       attendanceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -220,11 +310,32 @@ export default function PlannerPage({ data, onSave, onExport, onImport, onReset 
           </div>
         );
       case 'calendar':
-        return <CalendarView selectedDate={selectedDate} onSelectDate={handleSelectDate} attendanceRecords={data.attendance} dateRules={data.dateRules || {}} />;
+        return (
+          <CalendarView
+            selectedDate={selectedDate}
+            selectedMonth={selectedCalendarMonth}
+            onSelectMonth={(month) => {
+              setSelectedCalendarMonth(month || null);
+            }}
+            onSelectDate={handleSelectDate}
+            attendanceRecords={data.attendance}
+            dateRules={data.dateRules || {}}
+          />
+        );
       case 'analytics':
         return <BunkPredictor summary={summary} subjects={data.subjects} threshold={data.settings?.attendanceThreshold ?? 75} />;
       case 'settings':
-        return <SettingsPanel settings={data.settings} onChangeThreshold={handleThresholdChange} onExport={onExport} onImport={onImport} onReset={onReset} />;
+        return (
+          <SettingsPanel
+            settings={data.settings}
+            onChangeThreshold={handleThresholdChange}
+            onToggleReminder={handleReminderToggle}
+            onRequestReminderPermission={handleReminderPermissionRequest}
+            onExport={onExport}
+            onImport={onImport}
+            onReset={onReset}
+          />
+        );
       case 'history':
         return <AttendanceHistory attendanceRecords={data.attendance} onSelectDate={handleSelectDate} />;
       case 'bunk':
