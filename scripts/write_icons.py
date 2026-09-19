@@ -16,10 +16,6 @@ def write_png(path, width=1, height=1, color=(0, 97, 255, 255)):
 
 
 root = Path(__file__).resolve().parent.parent
-icons_dir = root / 'public' / 'icons'
-icons_dir.mkdir(exist_ok=True)
-
-write_png(icons_dir / 'icon-192.png', width=192, height=192, color=(0, 97, 255, 255))
-write_png(icons_dir / 'icon-512.png', width=512, height=512, color=(0, 97, 255, 255))
-write_png(icons_dir / 'icon-maskable-192.png', width=192, height=192, color=(15, 118, 110, 255))
-write_png(icons_dir / 'icon-maskable-512.png', width=512, height=512, color=(15, 118, 110, 255))
+(root / 'public' / 'icons').mkdir(exist_ok=True)
+write_png(root / 'public' / 'icons' / 'icon-192.png', width=192, height=192, color=(0, 97, 255, 255))
+write_png(root / 'public' / 'icons' / 'icon-512.png', width=512, height=512, color=(0, 97, 255, 255))
